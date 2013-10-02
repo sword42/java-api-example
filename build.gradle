@@ -64,7 +64,7 @@ war {
 	exclude "com/myapp/"
 	
 	// sets the main class to run when the generate war be executed using 'java -jar'
-	manifest { attributes 'Main-Class': 'io.github.sword42.javaapiexample.web.JettyStarter' }
+	manifest { attributes 'Main-Class': 'io.github.sword42.javaapiexample.JettyStarter' }
 }
 
 // Once you will need some basic api (servlet api, for example) for compilation, you need to add embeddedJetty dependencies for compilation
