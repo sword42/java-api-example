@@ -3,12 +3,15 @@ apply plugin: 'eclipse'
 apply plugin: 'war'
 
 
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
 repositories {
 	mavenCentral()
 }
 
 configurations {
- embeddedJetty
+	embeddedJetty
 }
 
 dependencies {
@@ -42,12 +45,62 @@ dependencies {
 		'org.eclipse.jetty:jetty-annotations:+',
 		'org.eclipse.jetty:jetty-io:+',
 		'org.eclipse.jetty:jetty-util:+',
-		'org.mortbay.jetty:jsp-2.1-glassfish:2.1.v20100127'
+		'org.mortbay.jetty:jsp-2.1-glassfish:2.1.v20100127',
 	)
+	
 
 }
+// Gets version from tag.
+def readVersion() {
+    def output = new ByteArrayOutputStream()
+    def result = exec {
+        commandLine = ['git', 'describe']
+        standardOutput = output
+        ignoreExitValue = true
+    }
+    def version = (result.getExitValue() == 0) ?
+            output.toString().trim() : 'UNKNOWN'
+    println "Version ${version}"
+    return version
+}
+
+// Gets build number by counting commits to tag named 'build'.
+def readBuildNumber() {
+    def output = new ByteArrayOutputStream()
+    def result = exec {
+        commandLine = ['git', 'describe', '--always', '--long']
+        standardOutput = output
+        ignoreExitValue = true
+    }
+    def buildNumber = (result.getExitValue() == 0) ?
+            output.toString().split('-')[1] : 'UNKNOWN'
+    println "Build number ${buildNumber}"
+    return buildNumber
+}
+
+def assignVersion() {
+    ext.version = readVersion()
+    ext.buildNumber = readBuildNumber()
+    project.version = "${ext.version}.${ext.buildNumber}".toString()
+	return project.version
+}
+
+def builtDateUTC() {
+	TimeZone.setDefault(TimeZone.getTimeZone('UTC'))
+	def now = new Date()
+	return now.format("MM/dd/yyyy'T'HH:mm:ss.SSS'Z'")
+}
+
+afterEvaluate { project ->
+    assignVersion()
+}
+
+
 
 war {
+	ext.buildDate = builtDateUTC()
+	ext.buildVersion = assignVersion()
+		
 	baseName = 'java-api-example'
 	// unzip and add all jetty dependencies into the root of our war file
 	from {
@@ -64,7 +117,16 @@ war {
 	exclude "com/myapp/"
 	
 	// sets the main class to run when the generate war be executed using 'java -jar'
-	manifest { attributes 'Main-Class': 'io.github.sword42.javaapiexample.JettyStarter' }
+	manifest { 
+		attributes (
+			'Main-Class': 'io.github.sword42.javaapiexample.JettyStarter',			
+            'Implementation-Title': 'Java API Example',	
+            'Implementation-Version': ext.buildVersion,	
+            'Implementation-Vendor': 'sword42.github.io',
+			'Built-Date': ext.buildDate,
+			'Built-JDK': System.getProperty('java.version'),
+		) 
+	}
 }
 
 // Once you will need some basic api (servlet api, for example) for compilation, you need to add embeddedJetty dependencies for compilation
